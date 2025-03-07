@@ -1,6 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 // Define types for our content
 type ContentSection = {
@@ -25,6 +26,12 @@ type MusicTrack = {
   title: string;
   artist: string;
   url: string;
+  isAutoplay?: boolean;
+};
+
+type ThemeSettings = {
+  mode: 'light' | 'dark';
+  color: string;
 };
 
 type AdminUser = {
@@ -40,6 +47,7 @@ type AdminContextType = {
   sections: ContentSection[];
   projects: Project[];
   musicTracks: MusicTrack[];
+  themeSettings: ThemeSettings;
   updateSection: (id: string, data: Partial<ContentSection>) => void;
   moveSection: (id: string, direction: 'up' | 'down') => void;
   addProject: (project: Omit<Project, 'id'>) => void;
@@ -48,6 +56,8 @@ type AdminContextType = {
   addMusicTrack: (track: Omit<MusicTrack, 'id'>) => void;
   updateMusicTrack: (id: string, data: Partial<MusicTrack>) => void;
   deleteMusicTrack: (id: string) => void;
+  setAutoplayTrack: (id: string) => void;
+  updateTheme: (settings: Partial<ThemeSettings>) => void;
 };
 
 // Initialize with default data
@@ -92,29 +102,7 @@ const defaultSections: ContentSection[] = [
   },
 ];
 
-const defaultProjects: Project[] = [
-  {
-    id: 'project-1',
-    title: 'Security Research',
-    description: 'Vulnerability analysis and responsible disclosure for web applications.',
-    image: '/placeholder.svg',
-    tags: ['Security', 'Penetration Testing', 'Research'],
-  },
-  {
-    id: 'project-2',
-    title: 'Chemical Analysis Tool',
-    description: 'Software for analyzing chemical compounds and reactions.',
-    image: '/placeholder.svg',
-    tags: ['Chemistry', 'Data Analysis', 'Software Development'],
-  },
-  {
-    id: 'project-3',
-    title: 'Audio Visualization',
-    description: 'Creating interactive audio-visual experiences.',
-    image: '/placeholder.svg',
-    tags: ['Music', 'Digital Art', 'Web Development'],
-  },
-];
+const defaultProjects: Project[] = [];
 
 const defaultMusicTracks: MusicTrack[] = [
   {
@@ -122,14 +110,14 @@ const defaultMusicTracks: MusicTrack[] = [
     title: 'Ambient Flow',
     artist: '3chos',
     url: '/music/placeholder-track.mp3',
-  },
-  {
-    id: 'track-2',
-    title: 'Digital Dreams',
-    artist: '3chos',
-    url: '/music/placeholder-track.mp3',
+    isAutoplay: true,
   },
 ];
+
+const defaultThemeSettings: ThemeSettings = {
+  mode: 'dark',
+  color: 'Default',
+};
 
 // Create the context
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
@@ -162,6 +150,13 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   );
   
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(
+    () => {
+      const saved = localStorage.getItem('portfolio-theme-settings');
+      return saved ? JSON.parse(saved) : defaultThemeSettings;
+    }
+  );
+  
   // Persist data to localStorage
   useEffect(() => {
     localStorage.setItem('portfolio-sections', JSON.stringify(sections));
@@ -175,6 +170,10 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     localStorage.setItem('portfolio-music-tracks', JSON.stringify(musicTracks));
   }, [musicTracks]);
   
+  useEffect(() => {
+    localStorage.setItem('portfolio-theme-settings', JSON.stringify(themeSettings));
+  }, [themeSettings]);
+  
   // Check for saved auth state
   useEffect(() => {
     const savedAuth = localStorage.getItem('portfolio-auth');
@@ -182,6 +181,19 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const savedUser = JSON.parse(savedAuth);
       setUser(savedUser);
     }
+    
+    // Also check Supabase session
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        setUser({
+          username: data.session.user.email || 'Supabase User',
+          isAuthenticated: true,
+        });
+      }
+    };
+    
+    checkSession();
   }, []);
 
   const login = async (username: string, password: string): Promise<boolean> => {
@@ -270,12 +282,30 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const newTrack = {
       ...track,
       id: `track-${Date.now()}`,
+      isAutoplay: track.isAutoplay || false,
     };
+    
+    // If this is set as autoplay, remove autoplay from other tracks
+    if (newTrack.isAutoplay) {
+      setMusicTracks(prev => 
+        prev.map(t => ({ ...t, isAutoplay: false }))
+      );
+    }
+    
     setMusicTracks(prev => [...prev, newTrack]);
     toast.success('Music track added');
   };
 
   const updateMusicTrack = (id: string, data: Partial<MusicTrack>) => {
+    // If setting autoplay, remove it from other tracks
+    if (data.isAutoplay) {
+      setMusicTracks(prev => 
+        prev.map(track => 
+          track.id !== id ? { ...track, isAutoplay: false } : track
+        )
+      );
+    }
+    
     setMusicTracks(prev => 
       prev.map(track => 
         track.id === id ? { ...track, ...data } : track
@@ -285,8 +315,36 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteMusicTrack = (id: string) => {
-    setMusicTracks(prev => prev.filter(track => track.id !== id));
+    // Check if it's the autoplay track
+    const isAutoplayTrack = musicTracks.find(track => track.id === id)?.isAutoplay;
+    
+    setMusicTracks(prev => {
+      const newTracks = prev.filter(track => track.id !== id);
+      
+      // If it was the autoplay track and we have other tracks, set the first one as autoplay
+      if (isAutoplayTrack && newTracks.length > 0) {
+        newTracks[0].isAutoplay = true;
+      }
+      
+      return newTracks;
+    });
+    
     toast.success('Music track deleted');
+  };
+  
+  const setAutoplayTrack = (id: string) => {
+    setMusicTracks(prev => 
+      prev.map(track => ({ 
+        ...track, 
+        isAutoplay: track.id === id 
+      }))
+    );
+    toast.success('Autoplay track updated');
+  };
+  
+  const updateTheme = (settings: Partial<ThemeSettings>) => {
+    setThemeSettings(prev => ({ ...prev, ...settings }));
+    toast.success('Theme settings updated');
   };
 
   return (
@@ -299,6 +357,7 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         sections,
         projects,
         musicTracks,
+        themeSettings,
         updateSection,
         moveSection,
         addProject,
@@ -307,6 +366,8 @@ export const AdminProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addMusicTrack,
         updateMusicTrack,
         deleteMusicTrack,
+        setAutoplayTrack,
+        updateTheme,
       }}
     >
       {children}

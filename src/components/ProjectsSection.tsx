@@ -33,32 +33,34 @@ const ProjectsSection: React.FC = () => {
         </div>
         
         {/* Filter Tags */}
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
-          <button
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeFilter === null
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-background hover:bg-background/80'
-            }`}
-            onClick={() => setActiveFilter(null)}
-          >
-            All
-          </button>
-          
-          {allTags.map((tag) => (
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
             <button
-              key={tag}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                activeFilter === tag
+                activeFilter === null
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-background hover:bg-background/80'
               }`}
-              onClick={() => setActiveFilter(tag)}
+              onClick={() => setActiveFilter(null)}
             >
-              {tag}
+              All
             </button>
-          ))}
-        </div>
+            
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  activeFilter === tag
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-background hover:bg-background/80'
+                }`}
+                onClick={() => setActiveFilter(tag)}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
         
         {/* Projects Grid */}
         {filteredProjects.length > 0 ? (

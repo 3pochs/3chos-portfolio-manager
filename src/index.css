@@ -34,6 +34,10 @@
     --ring: 240 5.9% 10%;
 
     --radius: 1rem;
+    
+    /* Custom theme properties */
+    --color-primary: var(--primary);
+    --color-accent: var(--accent);
   }
 
   .dark {
@@ -101,5 +105,20 @@
   
   .link-underline {
     @apply relative after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-full after:origin-bottom-right after:scale-x-0 after:bg-current after:transition-transform after:duration-300 after:ease-in-out hover:after:origin-bottom-left hover:after:scale-x-100;
+  }
+  
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out forwards;
+  }
+  
+  @keyframes slideUp {
+    from {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 }

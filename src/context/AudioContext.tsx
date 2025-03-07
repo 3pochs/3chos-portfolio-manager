@@ -1,12 +1,14 @@
 
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { useAdmin } from '@/context/AdminContext';
 
 type Music = {
   id: string;
   title: string;
   artist: string;
   url: string;
+  isAutoplay?: boolean;
 };
 
 type AudioContextType = {
@@ -25,33 +27,41 @@ type AudioContextType = {
   setCurrentTrack: (music: Music) => void;
 };
 
-const defaultPlaylist: Music[] = [
-  {
-    id: '1',
-    title: 'Ambient Flow',
-    artist: '3chos',
-    url: '/music/placeholder-track.mp3',
-  },
-];
-
 const AudioContext = createContext<AudioContextType | undefined>(undefined);
 
 export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { musicTracks } = useAdmin();
+  
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<Music | null>(null);
   const [volume, setVolume] = useState(0.5);
-  const [playlist, setPlaylist] = useState<Music[]>(defaultPlaylist);
+  const [playlist, setPlaylist] = useState<Music[]>([]);
+  const [initialized, setInitialized] = useState(false);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Initialize audio player with tracks from AdminContext
+  useEffect(() => {
+    if (initialized || musicTracks.length === 0) return;
+    
+    setPlaylist(musicTracks);
+    
+    // Find autoplay track or use first track
+    const autoplayTrack = musicTracks.find(track => track.isAutoplay);
+    if (autoplayTrack) {
+      setCurrentTrack(autoplayTrack);
+      setIsPlaying(true); // Start playing the autoplay track
+    } else if (musicTracks.length > 0) {
+      setCurrentTrack(musicTracks[0]);
+    }
+    
+    setInitialized(true);
+  }, [musicTracks, initialized]);
 
   useEffect(() => {
     audioRef.current = new Audio();
     audioRef.current.volume = volume;
     
-    // Load first track
-    if (playlist.length > 0 && !currentTrack) {
-      setCurrentTrack(playlist[0]);
-    }
-
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();

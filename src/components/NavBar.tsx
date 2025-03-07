@@ -1,127 +1,151 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAdmin } from '@/context/AdminContext';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Moon, Sun, Music, PauseCircle } from 'lucide-react';
+import { useAudio } from '@/context/AudioContext';
 
 const NavBar: React.FC = () => {
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { isAuthenticated } = useAdmin();
-
+  const [isOpen, setIsOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const { isPlaying, togglePlay, currentTrack } = useAudio();
+  
+  const toggleMenu = () => setIsOpen(!isOpen);
+  
+  // Add scroll event listener
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
+      if (window.scrollY > 10) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
     };
-
+    
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
-  const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
-  };
-
+  
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled
-          ? 'bg-background/80 backdrop-blur-lg shadow-sm py-2'
-          : 'bg-transparent py-4'
+        scrolled ? 'bg-background/80 backdrop-blur-lg shadow-sm' : 'bg-transparent'
       }`}
     >
-      <div className="container mx-auto px-4 flex items-center justify-between">
-        <Link to="/" className="text-xl font-bold tracking-tight hover:opacity-80 transition-opacity">
-          <span className="relative">
-            <span className="absolute -inset-1 rounded-lg bg-primary/5 transform -skew-x-12"></span>
-            <span className="relative">3chos</span>
-          </span>
-        </Link>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex space-x-8 items-center">
-          <NavLink href="#about">About</NavLink>
-          <NavLink href="#projects">Projects</NavLink>
-          <NavLink href="#music">Music</NavLink>
-          {isAuthenticated && (
-            <Link 
-              to="/admin" 
-              className="px-4 py-2 rounded-full bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity"
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <a href="/" className="text-xl font-bold tracking-tight">
+              3chos
+            </a>
+          </div>
+          
+          {/* Desktop Menu */}
+          <nav className="hidden md:flex space-x-10">
+            <a
+              href="#about"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              About
+            </a>
+            <a
+              href="#projects"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Projects
+            </a>
+            <a
+              href="#music"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Music
+            </a>
+            <a
+              href="#contact"
+              className="text-sm font-medium hover:text-primary transition-colors"
+            >
+              Contact
+            </a>
+          </nav>
+          
+          {/* Right Side Actions */}
+          <div className="flex items-center space-x-4">
+            {/* Music Control */}
+            {currentTrack && (
+              <button
+                onClick={togglePlay}
+                className="p-2 rounded-full hover:bg-secondary transition-colors"
+                aria-label={isPlaying ? "Pause music" : "Play music"}
+              >
+                {isPlaying ? <PauseCircle size={20} /> : <Music size={20} />}
+              </button>
+            )}
+            
+            {/* Admin Link */}
+            <Link
+              to="/admin"
+              className="hidden md:inline-flex text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-md hover:bg-primary/90 transition-colors"
             >
               Admin
             </Link>
-          )}
-        </nav>
-
-        {/* Mobile Menu Button */}
-        <button
-          onClick={toggleMobileMenu}
-          className="md:hidden p-2 rounded-md hover:bg-secondary"
-          aria-expanded={isMobileMenuOpen}
-          aria-label="Toggle menu"
-        >
-          {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-        </button>
-      </div>
-
-      {/* Mobile Navigation */}
-      {isMobileMenuOpen && (
-        <div className="md:hidden bg-background/95 backdrop-blur-lg border-b border-border animate-slide-down">
-          <nav className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <MobileNavLink href="#about" onClick={() => setIsMobileMenuOpen(false)}>
-              About
-            </MobileNavLink>
-            <MobileNavLink href="#projects" onClick={() => setIsMobileMenuOpen(false)}>
-              Projects
-            </MobileNavLink>
-            <MobileNavLink href="#music" onClick={() => setIsMobileMenuOpen(false)}>
-              Music
-            </MobileNavLink>
-            {isAuthenticated && (
-              <Link
-                to="/admin"
-                className="px-4 py-2 w-full text-center rounded-full bg-primary text-primary-foreground font-medium"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
-                Admin
-              </Link>
-            )}
-          </nav>
+            
+            {/* Mobile Menu Button */}
+            <button
+              onClick={toggleMenu}
+              className="md:hidden p-2 rounded-md hover:bg-secondary transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
         </div>
-      )}
+      </div>
+      
+      {/* Mobile Menu */}
+      <div
+        className={`md:hidden absolute top-16 inset-x-0 bg-background/95 backdrop-blur-lg shadow-md transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
+        <div className="px-4 py-6 space-y-4">
+          <a
+            href="#about"
+            className="block py-2 text-base font-medium hover:text-primary"
+            onClick={() => setIsOpen(false)}
+          >
+            About
+          </a>
+          <a
+            href="#projects"
+            className="block py-2 text-base font-medium hover:text-primary"
+            onClick={() => setIsOpen(false)}
+          >
+            Projects
+          </a>
+          <a
+            href="#music"
+            className="block py-2 text-base font-medium hover:text-primary"
+            onClick={() => setIsOpen(false)}
+          >
+            Music
+          </a>
+          <a
+            href="#contact"
+            className="block py-2 text-base font-medium hover:text-primary"
+            onClick={() => setIsOpen(false)}
+          >
+            Contact
+          </a>
+          <Link
+            to="/admin"
+            className="block py-2 text-base font-medium hover:text-primary"
+            onClick={() => setIsOpen(false)}
+          >
+            Admin
+          </Link>
+        </div>
+      </div>
     </header>
-  );
-};
-
-interface NavLinkProps {
-  href: string;
-  children: React.ReactNode;
-}
-
-const NavLink: React.FC<NavLinkProps> = ({ href, children }) => {
-  return (
-    <a
-      href={href}
-      className="text-foreground/80 hover:text-foreground font-medium link-underline transition-colors"
-    >
-      {children}
-    </a>
-  );
-};
-
-interface MobileNavLinkProps extends NavLinkProps {
-  onClick?: () => void;
-}
-
-const MobileNavLink: React.FC<MobileNavLinkProps> = ({ href, children, onClick }) => {
-  return (
-    <a
-      href={href}
-      className="block px-4 py-2 text-foreground/80 hover:text-foreground font-medium rounded-md hover:bg-secondary transition-colors"
-      onClick={onClick}
-    >
-      {children}
-    </a>
   );
 };
 

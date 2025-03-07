@@ -5,6 +5,8 @@ import AdminLayout from '@/components/admin/AdminLayout';
 import AdminLogin from '@/components/admin/AdminLogin';
 import ContentEditor from '@/components/admin/ContentEditor';
 import MusicUploader from '@/components/admin/MusicUploader';
+import ProjectsManager from '@/components/admin/ProjectsManager';
+import ThemeSettings from '@/components/admin/ThemeSettings';
 import { useAdmin } from '@/context/AdminContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -25,8 +27,8 @@ const Settings = () => {
           <div className="p-4 border border-input rounded-md">
             <h3 className="font-medium mb-2">About This Admin Panel</h3>
             <p className="text-sm text-muted-foreground">
-              This admin panel allows you to manage your portfolio content, including sections and music.
-              Changes are saved to your browser's local storage.
+              This admin panel allows you to manage your portfolio content, including sections, projects, music, and theme.
+              Changes are saved to your browser's local storage and Supabase.
             </p>
           </div>
         </div>
@@ -90,7 +92,9 @@ const Admin = () => {
   // Determine active tab based on path
   const getActiveTab = () => {
     const path = location.pathname;
+    if (path.includes('/admin/projects')) return 'projects';
     if (path.includes('/admin/music')) return 'music';
+    if (path.includes('/admin/theme')) return 'theme';
     if (path.includes('/admin/settings')) return 'settings';
     return 'content';
   };
@@ -111,11 +115,33 @@ const Admin = () => {
       />
       
       <Route
+        path="projects"
+        element={
+          <ProtectedRoute>
+            <AdminLayout activeTab={getActiveTab()}>
+              <ProjectsManager />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
         path="music"
         element={
           <ProtectedRoute>
             <AdminLayout activeTab={getActiveTab()}>
               <MusicUploader />
+            </AdminLayout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="theme"
+        element={
+          <ProtectedRoute>
+            <AdminLayout activeTab={getActiveTab()}>
+              <ThemeSettings />
             </AdminLayout>
           </ProtectedRoute>
         }
