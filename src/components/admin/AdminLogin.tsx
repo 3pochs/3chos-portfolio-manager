@@ -1,32 +1,91 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAdmin } from '@/context/AdminContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 const AdminLogin: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
   const { login } = useAdmin();
   const navigate = useNavigate();
   
+  useEffect(() => {
+    // Check if already logged in
+    const checkSession = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        navigate('/admin');
+      }
+    };
+    
+    checkSession();
+  }, [navigate]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username || !password) {
-      toast.error('Please enter both username and password');
+    if (!email || !password) {
+      toast.error('Please enter both email and password');
       return;
     }
     
     setIsLoading(true);
     
     try {
-      const success = await login(username, password);
-      if (success) {
+      // First try Supabase authentication
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) {
+        // If Supabase auth fails, try the default admin login
+        console.log('Supabase auth failed, trying fallback login');
+        const success = await login(email, password);
+        if (success) {
+          navigate('/admin');
+        } else {
+          toast.error('Invalid credentials');
+        }
+      } else if (data.session) {
+        // Supabase auth successful
+        toast.success('Login successful');
         navigate('/admin');
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast.error('An error occurred during login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  const handleSignUp = async () => {
+    if (!email || !password) {
+      toast.error('Please enter both email and password');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+      
+      if (error) {
+        toast.error(error.message);
+      } else {
+        toast.success('Account created! Please verify your email if required.');
+      }
+    } catch (error) {
+      console.error('Sign up error:', error);
+      toast.error('An error occurred during sign up');
     } finally {
       setIsLoading(false);
     }
@@ -47,16 +106,16 @@ const AdminLogin: React.FC = () => {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label htmlFor="username" className="text-sm font-medium">
-                    Username
+                  <label htmlFor="email" className="text-sm font-medium">
+                    Email
                   </label>
                   <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     className="w-full px-3 py-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    placeholder="Enter your username"
+                    placeholder="Enter your email"
                     disabled={isLoading}
                   />
                 </div>
@@ -83,6 +142,17 @@ const AdminLogin: React.FC = () => {
                     className="w-full py-2.5 px-4 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-70"
                   >
                     {isLoading ? 'Signing in...' : 'Sign in'}
+                  </button>
+                </div>
+                
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={handleSignUp}
+                    disabled={isLoading}
+                    className="text-sm text-primary hover:underline"
+                  >
+                    Don't have an account? Sign up
                   </button>
                 </div>
               </div>
